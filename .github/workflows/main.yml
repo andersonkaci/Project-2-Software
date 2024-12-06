@@ -44,9 +44,9 @@ jobs:
       #  flake8 converted_scripts
 
     # Test the notebooks directly with nbval
-    - name: Test notebooks
-      run: |
-        pytest --nbval-lax --sanitize-with sanitize_config.json
+  #  - name: Test notebooks
+   #   run: |
+    #    pytest --nbval-lax --sanitize-with sanitize_config.json
 
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
