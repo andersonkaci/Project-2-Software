@@ -23,15 +23,17 @@ YOLOv11 is available in 5 different sizes, ranging from `2.6M` to `56.9M` parame
 # Setup
 """
 
-# Commented out IPython magic to ensure Python compatibility.
-!nvidia-smi
-
 import os
+
 HOME = os.getcwd()
 print(HOME)
 
-# %pip install ultralytics supervision roboflow
+# Install necessary libraries
+!pip install ultralytics roboflow
+
 import ultralytics
+from roboflow import Roboflow
+
 ultralytics.checks()
 
 """# Train Custom YOLOv11 Model
@@ -39,14 +41,11 @@ ultralytics.checks()
 Import Roboflow Custom Dataset
 """
 
-# Commented out IPython magic to ensure Python compatibility.
-!mkdir {HOME}/datasets
-# %cd {HOME}/datasets
+# Create dataset directory
+DATASET_DIR = f"{HOME}/datasets"
+os.makedirs(DATASET_DIR, exist_ok=True)
 
-from google.colab import userdata
-!pip install roboflow
-
-from roboflow import Roboflow
+# Download dataset using Roboflow
 rf = Roboflow(api_key="0ePQ94rurAqXYZz9Cxib")
 project = rf.workspace("project2-hhxsv").project("project2-kawzx")
 version = project.version(4)
@@ -54,146 +53,84 @@ dataset = version.download("yolov11")
 
 """Train Custom Model"""
 
-# Commented out IPython magic to ensure Python compatibility.
-# %cd {HOME}
+# Train YOLO model
+!yolo task=detect mode=train model=yolov11s.pt data={dataset.location}/data.yaml epochs=100 imgsz=640 plots=True
 
-!yolo task=detect mode=train model=yolo11s.pt data={dataset.location}/data.yaml epochs= 100 imgsz=640 plots=True
-
+# List training results
 !ls {HOME}/runs/detect/train/
 
+# Display training metrics
 from IPython.display import Image as IPyImage
 
 IPyImage(filename=f'{HOME}/runs/detect/train/confusion_matrix.png', width=600)
-
-from IPython.display import Image as IPyImage
-
 IPyImage(filename=f'{HOME}/runs/detect/train/results.png', width=600)
-
-from IPython.display import Image as IPyImage
-
-IPyImage(filename=f'{HOME}/runs/detect/train/val_batch0_pred.jpg', width=600)
 
 """# Validate fine-tuned Model"""
 
+# Validate YOLO model
 !yolo task=detect mode=val model={HOME}/runs/detect/train/weights/best.pt data={dataset.location}/data.yaml
 
 """# Inference with Custom Model"""
 
-!yolo task=detect mode=predict model=/content/runs/detect/train/weights/best.pt conf=0.25 source={dataset.location}/test/images save=True
+# Predict with YOLO model
+!yolo task=detect mode=predict model={HOME}/runs/detect/train/weights/best.pt conf=0.25 source={dataset.location}/test/images save=True
 
+# Display predictions
 import glob
-import os
 from IPython.display import Image as IPyImage, display
 
-# Get a list of .jpg files in the predict folder, sorted by modification time (newest first)
-images = sorted(glob.glob('/content/runs/detect/predict/*.jpg'), key=os.path.getmtime, reverse=True)
+prediction_images = sorted(glob.glob(f"{HOME}/runs/detect/predict/*.jpg"), key=os.path.getmtime, reverse=True)
 
-# Display up to 3 latest images
-for img in images[:10]:
-    display(IPyImage(filename=img, width=600))
-    print("\n")
-
-"""# Prediction"""
-
-!yolo task=detect mode=predict model=/content/runs/detect/train/weights/best.pt conf=0.25 source=/content/TestPictures/MultiObject save=True
-
-import glob
-import os
-from IPython.display import Image as IPyImage, display
-
-# Get a list of .jpg files in the predict folder, sorted by modification time (newest first)
-images = sorted(glob.glob('/content/runs/detect/predict2/*.jpg'), key=os.path.getmtime, reverse=True)
-
-# Display up to 3 latest images
-for img in images[:20]:
-    display(IPyImage(filename=img, width=600))
-    print("\n")
-
-!yolo task=detect mode=predict model=/content/runs/detect/train/weights/best.pt conf=0.25 source=/content/TestPictures/SingleObject save=True
-
-import glob
-import os
-from IPython.display import Image as IPyImage, display
-
-# Get a list of .jpg files in the predict folder, sorted by modification time (newest first)
-images = sorted(glob.glob('/content/runs/detect/predict3/*.jpg'), key=os.path.getmtime, reverse=True)
-
-# Display up to 3 latest images
-for img in images[:20]:
-    display(IPyImage(filename=img, width=600))
-    print("\n")
+for img_path in prediction_images[:10]:
+    display(IPyImage(filename=img_path, width=600))
 
 """# Video"""
 
-# Install required libraries
-!pip install ultralytics opencv-python-headless ffmpeg-python
+# Install additional libraries
+!pip install opencv-python-headless ffmpeg-python
 
-# Import necessary libraries
+# Video processing
 import cv2
 from ultralytics import YOLO
 from IPython.display import Video
 
-# Load the YOLO model
-model_path = "/content/runs/detect/train/weights/best.pt"
-model = YOLO(model_path)
-print(f"Loaded model from: {model_path}")
+model_path = f"{HOME}/runs/detect/train/weights/best.pt"
+input_video_path = f"{HOME}/TestPictures/Videos/MultipleDogWalking.mp4"
+output_video_path = f"{HOME}/output_video.mp4"
 
-# Define the input and output video paths
-input_video_path = "/content/TestPictures/Videos/MultipleDogWalking.mp4"
-output_video_path = "/content/output_video.mp4"
-print(f"Input video: {input_video_path}")
-
-# Open the input video
 cap = cv2.VideoCapture(input_video_path)
 frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 fps = int(cap.get(cv2.CAP_PROP_FPS))
 
-# Define codec and create the VideoWriter object
 fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
-# Process the video frame by frame
+model = YOLO(model_path)
+
 try:
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
 
-        # Perform object detection
         results = model(frame)
 
-        # Draw bounding boxes and labels on the frame
         for detection in results[0].boxes:
-            x1, y1, x2, y2 = map(int, detection.xyxy[0])  # Bounding box coordinates
-            conf = detection.conf[0]  # Confidence score
-            cls = int(detection.cls[0])  # Class index
+            x1, y1, x2, y2 = map(int, detection.xyxy[0])
+            conf = detection.conf[0]
+            cls = int(detection.cls[0])
             label = f"{model.names[cls]} {conf:.2f}"
 
-            # Draw bounding box and label
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Green box
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-        # Write the processed frame to the output video
         out.write(frame)
-
 finally:
-    # Release resources
     cap.release()
     out.release()
 
-print(f"Processing complete. Output video saved to: {output_video_path}")
+print(f"Processed video saved to: {output_video_path}")
 
-# Display the saved video
-print("Playing the processed video...")
+# Display processed video
 Video(output_video_path, embed=True)
-
-"""Display Video"""
-
-from IPython.display import Video
-
-# Path to your video file
-video_path = "/content/output_video.mp4"
-
-# Display the video in the notebook
-Video(video_path, embed=True)
