@@ -1,1 +1,6 @@
-pip freeze > requirements.txt
+ultralytics==8.0.133
+roboflow==0.2.28
+opencv-python-headless==4.8.0.74
+ffmpeg-python==0.2.0
+IPython==8.14.0
+numpy==1.23.5
