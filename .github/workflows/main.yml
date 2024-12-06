@@ -29,25 +29,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt jupyter nbconvert nbval
 
-    # Convert Jupyter Notebooks to Python scripts
- #   - name: Convert notebooks to scripts
-  #    run: |
-   #     mkdir -p converted_scripts
-    #    for notebook in $(find . -name "*.ipynb"); do
-     #     jupyter nbconvert --to script "$notebook" --output-dir=converted_scripts;
-      #  done
-
-    # Lint the converted Python scripts
-   # - name: Lint code
-    #  run: |
-     #   pip install flake8
-      #  flake8 converted_scripts
-
-    # Test the notebooks directly with nbval
-  #  - name: Test notebooks
-   #   run: |
-    #    pytest --nbval-lax --sanitize-with sanitize_config.json
-
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
