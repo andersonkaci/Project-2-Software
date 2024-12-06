@@ -43,7 +43,7 @@ jobs:
 
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: windows-latest
+    runs-on: macos-latest
 
     steps:
     - name: Checkout code
